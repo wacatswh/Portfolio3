@@ -153,10 +153,10 @@ namespace gpxp
     Route::Route(std::string source, bool isFileName /*= false*/)
     {
         std::ostringstream oss;
+
         ctorSucceeded_ = false;
 
-
-        if (isFileName)
+        if(isFileName)
         {
             std::string fileName = source;
             string content, line;
@@ -180,6 +180,7 @@ namespace gpxp
 
 		ctorReport_ = checkTag(source); // check the tag of source, report kept into ctorReport_
 
+		/*
         string temp = getWholeElement(source, "rte");
         temp = getElementValue(temp, "rte");
         source.swap(temp);
@@ -219,7 +220,14 @@ namespace gpxp
             metres deltaV =  pci1->ele()  - pci2->ele() ;
             rlen_ += sqrt(pow(deltaH,2) + pow(deltaV,2));
         }
+		*/
+		if (tagExists(source, "gpx"))
+			oss = Route::processGPX(source);
         
+		// can be defined when more format is needed to process
+		// if (tagExists(source, "rte"))
+		//	oss = Route::processRTE(source); 
+
         oss << std::endl << " simplify() not implemented";
         //simplify();
         ctorReport_ = oss.str();
@@ -249,6 +257,52 @@ namespace gpxp
 
 		osasStr = osas.str();
 		return osasStr;
+	}
+
+	std::ostringstream Route::processGPX(string source)
+	{
+		std::ostringstream oss;
+		string temp = getWholeElement(source, "rte");
+		temp = getElementValue(temp, "rte");
+		source.swap(temp);
+		if (source.substr(0, 6) == "<name>")
+		{
+			string temp = getWholeElement(source, "name");
+			source = source.substr(temp.length());
+			routeName_ = getElementValue(temp, "name");
+			oss << std::endl << "route name is " << routeName_;
+		}
+		while (tagExists(source, "rtept"))
+		{
+			temp = getWholeElement(source, "rtept");
+			source = source.substr(temp.length());
+			string lt, ln, el, nm;
+			lt = getAttributeValue(temp, "rtept", "lat");
+			ln = getAttributeValue(temp, "rtept", "lon");
+			el = getElementValue(temp, "ele");
+			posnName_.push_back(tagExists(temp, "name") ? getElementValue(temp, "name") : string(""));
+			root_.push_back(Posn(lt, ln, el));
+		}
+		oss << std::endl << root_.size() << " rtept added";
+		if (root_.empty())
+		{
+			oss << std::endl << "no rtept ";
+			ctorReport_ = oss.str();
+			return oss;
+		}
+		rlen_ = 0;
+
+		std::vector<Posn>::const_iterator pci1, pci2;
+		pci1 = pci2 = root_.begin();
+		++pci2;
+		for (; pci2 != root_.end(); ++pci1, ++pci2)
+		{
+			metres deltaH = pci1->distanceTo(*pci2);
+			metres deltaV = pci1->ele() - pci2->ele();
+			rlen_ += sqrt(pow(deltaH, 2) + pow(deltaV, 2));
+		}
+
+		return oss;
 	}
 
 	/************** refactoring functions end here **************/

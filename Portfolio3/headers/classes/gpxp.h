@@ -119,7 +119,8 @@ namespace gpxp
 
 		// declaration of refactoring functions
 		std::string checkTag(string source);
-        
+		std::ostringstream processGPX(string source);
+
     private:
         metres rlen_; 						// set by c'tor & updated by append
         std::vector<Posn> root_;
